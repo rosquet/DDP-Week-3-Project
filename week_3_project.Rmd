@@ -42,7 +42,6 @@ HoFpitchers = HoFpitchers %>%
                   Runs = sum(Runs),
                   ERA = round(((Runs * 9) / IP), digits = 2),
                   Elected = mean(Elected)) %>%
-        arrange(Elected) %>%
         na.omit()
 
 ## Remove part-time pitchers
@@ -53,6 +52,13 @@ HoFpitchers = HoFpitchers %>% filter(IP > 500)
 
 HoFpitchers = HoFpitchers %>%
         mutate(WLper = round((W / (W + L)), digits = 3))
+
+# Average by year elected
+
+HoFpitchers = HoFpitchers %>%
+        group_by(Elected) %>%
+        summarize(ERA = mean(ERA),
+                  WLper = mean(WLper))
 
 ## Plot
 
