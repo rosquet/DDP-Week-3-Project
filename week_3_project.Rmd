@@ -1,0 +1,89 @@
+---
+title: "Changes in ERA and W-L Percentage for Hall of Fame Pitchers"
+author: "Clay Glad"
+date: "9/20/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, chunk1, echo = FALSE, message = FALSE, warning = FALSE}
+library(tidyverse)
+library(data.table)
+library(plotly)
+
+pitchers =
+        fread("/home/clay/Skole/JHU_Data_Science/Developing_Data_Products/Week_3_project/baseballdatabank-master/core/Pitching.csv")
+HoF =
+        fread("/home/clay/Skole/JHU_Data_Science/Developing_Data_Products/Week_3_project/baseballdatabank-master/core/HallOfFame.csv")
+
+## Get pitchers in Hall of Fame
+
+HoF = HoF %>% filter(inducted == "Y")
+HoFidYr = data.table(playerID = HoF$playerID, Elected = HoF$yearID)
+HoFpitchers = inner_join(pitchers, HoFidYr, by = "playerID")
+
+## Use only playerID, W, L, IPouts, ERA columns
+
+HoFpitchers = HoFpitchers %>% select(playerID, W, L, IPouts, ERA, Elected)
+
+## Consolodate player rows
+
+HoFpitchers =  HoFpitchers %>%
+        mutate(IP = IPouts / 3,
+               Runs = (ERA * IP) / 9)
+HoFpitchers = HoFpitchers %>%
+        group_by(playerID) %>%
+        summarize(W = sum(W),
+                  L = sum(L),
+                  IP = sum(IP),
+                  Runs = sum(Runs),
+                  ERA = round(((Runs * 9) / IP), digits = 2),
+                  Elected = mean(Elected)) %>%
+        arrange(Elected) %>%
+        na.omit()
+
+## Remove part-time pitchers
+
+HoFpitchers = HoFpitchers %>% filter(IP > 500)
+
+## Calculate W-L percentage
+
+HoFpitchers = HoFpitchers %>%
+        mutate(WLper = round((W / (W + L)), digits = 3))
+
+## Plot
+
+ay = list(
+        tickfont = list(color = "red"),
+        overlaying = "y",
+        side = "right",
+        title = "W-L Percentage")
+
+plot1 = plot_ly(data = HoFpitchers,
+                x = ~Elected) %>%
+        add_trace(y = ~ERA,
+                  mode = "lines",
+                  name = "ERA") %>%
+        add_trace(y = ~WLper,
+                  mode = "lines",
+                  yaxis = "y2",
+                  name = "W-L Percentage") %>%
+        add_segments(x = 1973, xend = 1973, y = 0, yend = 4,
+                     name = "Introduction of the DH") %>%
+        layout(yaxis2 = ay,
+               xaxis = list(
+                       range = c(1934, 2025),
+                       title = "Year Elected"),
+               legend = list(
+                       x = 1.1),
+               autosize = F,
+               width = 1000)
+
+plot1
+        
+```
+
+
